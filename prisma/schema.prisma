@@ -1,0 +1,107 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   Int                 @id @default(autoincrement())
+  name                 String
+  email                String              @unique
+  password             String
+  phone                String
+  type                 Int                 @default(2)
+  Business             Business[]
+  Agenda               Agenda[]
+  Service              Service[]
+  // como cliente (agendamentos feitos por ele)
+  appointments         Appointment[]       @relation("ClientAppointments")
+  // como funcionário
+  employeeAppointments Appointment[]       @relation("EmployeeAppointments")
+  AppointmentClient    AppointmentClient[]
+}
+
+model Business {
+  id      Int       @id @default(autoincrement())
+  name    String
+  address String
+  type    Int
+  user    User      @relation(fields: [userId], references: [id])
+  userId  Int
+  Agenda  Agenda[]
+  Service Service[]
+}
+
+model Agenda {
+  id           Int           @id @default(autoincrement())
+  name         String
+  user         User          @relation(fields: [userId], references: [id])
+  userId       Int
+  business     Business      @relation(fields: [businessId], references: [id])
+  businessId   Int
+  days         AgendaDay[]
+  appointments Appointment[] 
+  createdAt    DateTime      @default(now())
+}
+
+model AgendaDay {
+  id       Int          @id @default(autoincrement())
+  date     String // ex: "Monday"
+  weekDay  Int
+  agenda   Agenda       @relation(fields: [agendaId], references: [id], onDelete: Cascade)
+  agendaId Int
+  hours    AgendaHour[]
+}
+
+model AgendaHour {
+  id          Int       @id @default(autoincrement())
+  start       String
+  end         String
+  agendaDay   AgendaDay @relation(fields: [agendaDayId], references: [id], onDelete: Cascade)
+  agendaDayId Int
+}
+
+model Service {
+  id           Int           @id @default(autoincrement())
+  businessId   Int
+  business     Business      @relation(fields: [businessId], references: [id])
+  name         String
+  price        Float
+  duration     Int 
+  active       Boolean       @default(true)
+  user         User          @relation(fields: [userId], references: [id])
+  userId       Int
+  appointments Appointment[] 
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Appointment {
+  id          Int                @id @default(autoincrement())
+  agenda      Agenda             @relation(fields: [agendaId], references: [id])
+  agendaId    Int
+  employee    User               @relation("EmployeeAppointments", fields: [employeeId], references: [id])
+  employeeId  Int
+  service     Service            @relation(fields: [serviceId], references: [id])
+  serviceId   Int
+  client      AppointmentClient? @relation(fields: [clientId], references: [id])
+  clientId    Int?
+  createdBy   User?              @relation("ClientAppointments", fields: [createdById], references: [id]) // quem criou
+  createdById Int?
+  startTime   DateTime
+  endTime     DateTime
+  createdAt   DateTime           @default(now())
+}
+
+model AppointmentClient {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String?
+  phone        String
+  userId       Int?
+  user         User?         @relation(fields: [userId], references: [id])
+  appointments Appointment[]
+}

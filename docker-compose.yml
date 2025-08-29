@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: timelyone-db
+    environment:
+      POSTGRES_USER: timelyone_user
+      POSTGRES_PASSWORD: timelyone_password
+      POSTGRES_DB: timelyone_management_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - timelyone-management-network
+
+volumes:
+  pgdata:
+
+networks:
+  timelyone-management-network:
+    driver: bridge
