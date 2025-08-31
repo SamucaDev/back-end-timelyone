@@ -91,6 +91,7 @@ model Appointment {
   clientId    Int?
   createdBy   User?              @relation("ClientAppointments", fields: [createdById], references: [id]) // quem criou
   createdById Int?
+  status       Int                @default(1)
   startTime   DateTime
   endTime     DateTime
   createdAt   DateTime           @default(now())

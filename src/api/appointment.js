@@ -67,8 +67,8 @@ router.post("/slots", async (req, res) => {
     const date = new Date(appointmentDate);
     const weekDay = date.getDay();
 
-    const startOfDay = new Date(appointmentDate + 'T00:00:00.000');
-    const endOfDay = new Date(appointmentDate + 'T23:59:59.999');
+    const startOfDay = new Date(appointmentDate + "T00:00:00.000");
+    const endOfDay = new Date(appointmentDate + "T23:59:59.999");
 
     const agendas = await prisma.agenda.findUnique({
       where: { id: agendaId },
@@ -97,7 +97,8 @@ router.post("/slots", async (req, res) => {
     const slotsAvailable = [];
 
     const openingHour = agendas.days[0].hours[0].start;
-    const closingHour = agendas.days[0].hours[agendas.days[0].hours.length - 1].end;
+    const closingHour =
+      agendas.days[0].hours[agendas.days[0].hours.length - 1].end;
 
     function timeToMinutes(time) {
       const [h, m] = time.split(":").map(Number);
@@ -125,24 +126,24 @@ router.post("/slots", async (req, res) => {
       const endHour = formatDateToHour(ev.endTime, "Europe/Dublin");
       const startMinutes = timeToMinutes(startHour);
       const endMinutes = timeToMinutes(endHour);
-      
+
       return {
         id: ev.id,
         start: startMinutes,
         end: endMinutes,
         startHour,
-        endHour
+        endHour,
       };
     });
 
     function hasConflict(slotStart, slotEnd) {
       let hasOverlap = false;
-      
+
       eventsInMinutes.forEach((event) => {
         const overlap = slotStart < event.end && slotEnd > event.start;
         if (overlap) hasOverlap = true;
       });
-      
+
       return hasOverlap;
     }
 
@@ -196,8 +197,8 @@ router.post("/", async (req, res) => {
     const appointment = await prisma.appointment.create({
       data: {
         agendaId,
-        startTime: new Date(new Date(startTime).toLocaleString("en-GB", { timeZone: "Europe/Dublin" })),
-        endTime: new Date(new Date(endTime).toLocaleString("en-GB", { timeZone: "Europe/Dublin" })),
+        startTime: startTime,
+        endTime: endTime,
         clientId: client.id,
         serviceId,
         employeeId,
@@ -216,35 +217,54 @@ router.get("/agenda/:agendaId", async (req, res) => {
 
   function getWeekRange(date) {
     const d = new Date(date);
-  
+
     const day = d.getDay();
-  
+
     const sunday = new Date(d);
     sunday.setDate(d.getDate() - day);
-  
+
     const saturday = new Date(sunday);
     saturday.setDate(sunday.getDate() + 6);
-  
+
     return { sunday, saturday };
   }
 
   const { sunday, saturday } = getWeekRange(new Date());
-  
+
   const events = await prisma.appointment.findMany({
     where: {
       agendaId: parseInt(agendaId),
-      startTime: {
-        gte: sunday,
-        lt: saturday,
-      },
+      status: {
+        not: 2
+      }
     },
     include: {
       client: true,
-      service: true
+      service: true,
     },
   });
 
   res.json(events);
+});
+
+router.patch("/:id/status/cancel", async (req, res) => {
+  try {
+    const appointmentId = parseInt(req.params.id);
+
+    if (isNaN(appointmentId)) {
+      return res.status(400).json({ error: "Invalid appointment ID" });
+    }
+
+    const updatedAppointment = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: 2 },
+    });
+
+    res.json(updatedAppointment);
+  } catch (err) {
+    console.error("Error updating appointment status", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 module.exports = router;

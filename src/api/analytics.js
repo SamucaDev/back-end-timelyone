@@ -1,26 +1,42 @@
 const { Router } = require("express");
 const { PrismaClient } = require("@prisma/client");
+const handlePrismaError = require("../utils/handlePrismaError");
 
 const router = Router();
 const prisma = new PrismaClient();
 
-router.get("/appointments/next", async (req, res) => {
+router.get("/appointments/next/:businessId", async (req, res) => {
   try {
     const now = new Date();
+    const businessId = parseInt(req.params.businessId);
 
+    // Step 1: Fetch agendas for the given businessId
+    const agendas = await prisma.agenda.findMany({
+      where: { businessId },
+      select: { id: true },
+    });
+
+    const agendaIds = agendas.map((agenda) => agenda.id);
+
+    // Step 2: Fetch appointments for the retrieved agenda IDs
     const appointments = await prisma.appointment.findMany({
       where: {
         startTime: {
-          gte: now, // apenas do momento atual para frente
+          gte: now,
         },
+        agendaId: { in: agendaIds },
       },
       orderBy: {
-        startTime: "asc", // ordena pelo horário mais próximo
+        startTime: "asc",
       },
-      take: 5, // limita aos 5 próximos
+      take: 5,
       include: {
         service: true,
-        agenda: true,
+        agenda: {
+          include: {
+            business: true,
+          },
+        },
         employee: {
           select: { id: true, name: true, email: true, phone: true },
         },
@@ -38,14 +54,24 @@ router.get("/appointments/next", async (req, res) => {
   }
 });
 
-router.get("/appointments/by-month/:year/:month", async (req, res) => {
+router.get("/appointments/by-month/:year/:month/:businessId", async (req, res) => {
   try {
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
+    const businessId = parseInt(req.params.businessId);
 
     const startDate = new Date(year, month - 1, 1, 0, 0, 0);
     const endDate = new Date(year, month, 0, 23, 59, 59);
 
+    // Step 1: Fetch agendas for the given businessId
+    const agendas = await prisma.agenda.findMany({
+      where: { businessId },
+      select: { id: true },
+    });
+
+    const agendaIds = agendas.map((agenda) => agenda.id);
+
+    // Step 2: Group appointments by serviceId for the retrieved agenda IDs
     const servicesCount = await prisma.appointment.groupBy({
       by: ["serviceId"],
       where: {
@@ -53,6 +79,7 @@ router.get("/appointments/by-month/:year/:month", async (req, res) => {
           gte: startDate,
           lte: endDate,
         },
+        agendaId: { in: agendaIds },
       },
       _count: {
         serviceId: true,
@@ -83,22 +110,29 @@ router.get("/appointments/by-month/:year/:month", async (req, res) => {
   }
 });
 
-
-
-router.get("/appointments/profit/:year/:month/:userId", async (req, res) => {
+router.get("/appointments/profit/:year/:month/:userId/:businessId", async (req, res) => {
   try {
     const year = parseInt(req.params.year);
     const month = parseInt(req.params.month);
     const userId = parseInt(req.params.userId);
+    const businessId = parseInt(req.params.businessId);
 
     const startDate = new Date(year, month - 1, 1, 0, 0, 0);
-
     const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
     const endDate = isCurrentMonth ? today : endOfMonth;
 
+    // Step 1: Fetch agendas for the given businessId
+    const agendas = await prisma.agenda.findMany({
+      where: { businessId },
+      select: { id: true },
+    });
+
+    const agendaIds = agendas.map((agenda) => agenda.id);
+
+    // Step 2: Fetch appointments for the retrieved agenda IDs
     const appointments = await prisma.appointment.findMany({
       where: {
         employeeId: userId,
@@ -106,6 +140,7 @@ router.get("/appointments/profit/:year/:month/:userId", async (req, res) => {
           gte: startDate,
           lte: endDate,
         },
+        agendaId: { in: agendaIds },
       },
       include: {
         service: { select: { price: true } },
