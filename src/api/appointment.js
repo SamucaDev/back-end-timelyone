@@ -50,6 +50,7 @@ router.get("/business/:businessId", async (req, res) => {
         days: {
           include: { hours: true },
         },
+        business: true
       },
     });
 
@@ -205,6 +206,28 @@ router.post("/", async (req, res) => {
       },
     });
 
+    // let client = await prisma.appointmentClient.findUnique({
+    //   where: { phone: clientData.phone },
+    // });
+
+    // if (!client) {
+    //   client = await prisma.appointmentClient.create({
+    //   data: {
+    //     name: clientData.name,
+    //     email: clientData.email,
+    //     phone: clientData.phone,
+    //   },
+    //   });
+    // } else {
+    //   client = await prisma.appointmentClient.update({
+    //   where: { phone: clientData.phone },
+    //   data: {
+    //     name: clientData.name,
+    //     email: clientData.email,
+    //   },
+    //   });
+    // }
+
     res.status(201).json(appointment);
   } catch (err) {
     console.error("Error creating appointment", err);
@@ -235,8 +258,8 @@ router.get("/agenda/:agendaId", async (req, res) => {
     where: {
       agendaId: parseInt(agendaId),
       status: {
-        not: 2
-      }
+        not: 2,
+      },
     },
     include: {
       client: true,
@@ -264,6 +287,49 @@ router.patch("/:id/status/cancel", async (req, res) => {
   } catch (err) {
     console.error("Error updating appointment status", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/details/:id", async (req, res) => {
+  try {
+    const agenda = await prisma.agenda.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        business: true,
+        days: {
+          include: { hours: true },
+        },
+      },
+    });
+
+    if (!agenda) {
+      return res.status(404).json({ message: "Agenda not found" });
+    }
+
+    const openingHours = agenda.days.map((day) => {
+      const hour = day.hours[0];
+      return {
+        day: day.weekDay,
+        hours: hour ? `${hour.start} - ${hour.end}` : "Closed",
+      };
+    });
+
+    const response = {
+      businessName: agenda.business.name,
+      phone: agenda.business.phone,
+      email: agenda.business.email,
+      address: agenda.business.address,
+      openingHours,
+      services: agenda.business.services,
+    };
+
+    res.json(response);
+  } catch (error) {
+    const handledError = handlePrismaError(error);
+    res.status(handledError.status).json({
+      message: handledError.message,
+      type: handledError.type,
+    });
   }
 });
 
