@@ -162,7 +162,7 @@ router.put("/:id", async (req, res) => {
       data: {
         name,
         days: {
-          deleteMany: {}, // Remove existing days
+          deleteMany: {},
           create: daysOfTheWeek.map((day) => ({
             date: day.date,
             weekDay: week[day.date.toLowerCase()],

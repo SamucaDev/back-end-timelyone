@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 const argon2 = require("argon2");
 const handlePrismaError = require("../utils/handlePrismaError");
+const { default: BusinessType } = require("../utils/enum/businessType");
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -14,9 +15,15 @@ const SECRET = process.env.SECRET_KEY;
 router.post("/", async (req, res) => {
   try {
     const { body: userInformation } = req;
+    console.log(req.body)
 
-    const checkUser = await prisma.user.findUnique({
-      where: { email: userInformation.email },
+    const checkUser = await prisma.user.findFirst({
+      where: {
+      OR: [
+        { email: userInformation.email },
+        { phone: userInformation.phone }
+      ]
+      },
     });
 
     if (checkUser) {
@@ -25,6 +32,7 @@ router.post("/", async (req, res) => {
           message: "User already exists",
         },
       });
+      return
     }
 
     const hash = await argon2.hash(userInformation.password);
@@ -43,7 +51,7 @@ router.post("/", async (req, res) => {
         data: {
           name: userInformation.businessName,
           address: userInformation.businessAddress,
-          type: typeUsersEnum.OWNER,
+          type: BusinessType[userInformation.businessType],
           userId: user.id,
         },
       });
@@ -70,8 +78,6 @@ router.post("/login", async (req, res) => {
         Business: true
       }
     });
-
-    console.log(user)
 
     const hash = await argon2.verify(user.password, login.password);
 

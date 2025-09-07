@@ -187,14 +187,28 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Missing required client fields" });
     }
 
-    const client = await prisma.appointmentClient.create({
+    let client = await prisma.appointmentClient.findFirst({
+      where: { phone: clientData.phone },
+    });
+
+    if (!client) {
+      client = await prisma.appointmentClient.create({
       data: {
         name: clientData.name,
         email: clientData.email,
         phone: clientData.phone,
       },
-    });
-
+      });
+    } else {
+      client = await prisma.appointmentClient.update({
+      where: { id: client.id },
+      data: {
+        name: clientData.name,
+        email: clientData.email,
+      },
+      });
+    }
+    
     const appointment = await prisma.appointment.create({
       data: {
         agendaId,
@@ -206,28 +220,6 @@ router.post("/", async (req, res) => {
       },
     });
 
-    // let client = await prisma.appointmentClient.findUnique({
-    //   where: { phone: clientData.phone },
-    // });
-
-    // if (!client) {
-    //   client = await prisma.appointmentClient.create({
-    //   data: {
-    //     name: clientData.name,
-    //     email: clientData.email,
-    //     phone: clientData.phone,
-    //   },
-    //   });
-    // } else {
-    //   client = await prisma.appointmentClient.update({
-    //   where: { phone: clientData.phone },
-    //   data: {
-    //     name: clientData.name,
-    //     email: clientData.email,
-    //   },
-    //   });
-    // }
-
     res.status(201).json(appointment);
   } catch (err) {
     console.error("Error creating appointment", err);
@@ -237,22 +229,6 @@ router.post("/", async (req, res) => {
 
 router.get("/agenda/:agendaId", async (req, res) => {
   const { agendaId } = req.params;
-
-  function getWeekRange(date) {
-    const d = new Date(date);
-
-    const day = d.getDay();
-
-    const sunday = new Date(d);
-    sunday.setDate(d.getDate() - day);
-
-    const saturday = new Date(sunday);
-    saturday.setDate(sunday.getDate() + 6);
-
-    return { sunday, saturday };
-  }
-
-  const { sunday, saturday } = getWeekRange(new Date());
 
   const events = await prisma.appointment.findMany({
     where: {

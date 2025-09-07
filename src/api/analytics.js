@@ -53,63 +53,60 @@ router.get("/appointments/next/:businessId", async (req, res) => {
   }
 });
 
-router.get(
-  "/appointments/by-month/:year/:month/:businessId",
-  async (req, res) => {
-    try {
-      const year = parseInt(req.params.year);
-      const month = parseInt(req.params.month);
-      const businessId = parseInt(req.params.businessId);
+router.get("/appointments/by-year/:year/:businessId", async (req, res) => {
+  try {
+    const year = parseInt(req.params.year);
+    const businessId = parseInt(req.params.businessId);
 
-      const startDate = new Date(year, month - 1, 1, 0, 0, 0);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
+    const agendas = await prisma.agenda.findMany({
+      where: { businessId },
+      select: { id: true },
+    });
 
-      const agendas = await prisma.agenda.findMany({
-        where: { businessId },
-        select: { id: true },
-      });
+    const agendaIds = agendas.map((agenda) => agenda.id);
 
-      const agendaIds = agendas.map((agenda) => agenda.id);
-
-      const servicesCount = await prisma.appointment.groupBy({
-        by: ["serviceId"],
-        where: {
-          startTime: {
-            gte: startDate,
-            lte: endDate,
-          },
-          agendaId: { in: agendaIds },
-          status: 1,
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        startTime: {
+          gte: new Date(year, 0, 1, 0, 0, 0), 
+          lte: new Date(year, 11, 31, 23, 59, 59),
         },
-        _count: {
-          serviceId: true,
-        },
-      });
+        agendaId: { in: agendaIds },
+        status: 1,
+      },
+      select: {
+        startTime: true,
+        service: { select: { price: true } },
+      },
+    });
 
-      const result = await Promise.all(
-        servicesCount.map(async (item) => {
-          const service = await prisma.service.findUnique({
-            where: { id: item.serviceId },
-            select: { id: true, name: true, price: true, duration: true },
-          });
+    const monthlyProfits = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      total: 0,
+    }));
 
-          return {
-            service,
-            count: item._count.serviceId,
-          };
-        })
-      );
+    appointments.forEach((appt) => {
+      const month = appt.startTime.getMonth();
+      monthlyProfits[month].total += appt.service.price;
+    });
 
-      res.json(result);
-    } catch (error) {
-      const handledError = handlePrismaError(error);
-      res.status(handledError.status).json({
-        message: handledError.message,
-        type: handledError.type,
-      });
-    }
+    const result = monthlyProfits.map((m) => ({
+      month: new Date(year, m.month - 1).toLocaleString("default", {
+        month: "short",
+      }),
+      total: m.total,
+    }));
+    console.log(result)
+    res.json(result);
+  } catch (error) {
+    console.log(error)
+    const handledError = handlePrismaError(error);
+    res.status(handledError.status).json({
+      message: handledError.message,
+      type: handledError.type,
+    });
   }
-);
+});
 
 router.get(
   "/appointments/profit/:year/:month/:userId/:businessId",
@@ -205,7 +202,6 @@ router.get(
         },
       });
 
-      // Agrupar por hora
       const counts = Array.from({ length: 24 }, (_, i) => ({
         hour: i,
         total: 0,
@@ -216,12 +212,10 @@ router.get(
         counts[hour].total += 1;
       });
 
-      // número de meses até agora no ano
       const now = new Date();
       const monthsElapsed =
         year === now.getFullYear() ? now.getMonth() + 1 : 12;
 
-      // calcular média por mês
       const result = counts.map((item) => ({
         hour: item.hour,
         average: item.total / monthsElapsed,
@@ -388,5 +382,57 @@ router.get("/engagement/user/:userId/:businessId", async (req, res) => {
       .json({ message: "Error fetching engagement data for user" });
   }
 });
+
+router.get("/appointments/services-by-year/:year/:businessId", async (req, res) => {
+  try {
+    const year = parseInt(req.params.year);
+    const businessId = parseInt(req.params.businessId);
+
+    const agendas = await prisma.agenda.findMany({
+      where: { businessId },
+      select: { id: true },
+    });
+
+    const agendaIds = agendas.map((a) => a.id);
+
+    const servicesCount = await prisma.appointment.groupBy({
+      by: ["serviceId"],
+      where: {
+        startTime: {
+          gte: new Date(year, 0, 1, 0, 0, 0),
+          lte: new Date(year, 11, 31, 23, 59, 59),
+        },
+        agendaId: { in: agendaIds },
+        status: 1,
+      },
+      _count: {
+        serviceId: true,
+      },
+    });
+
+    const result = await Promise.all(
+      servicesCount.map(async (item) => {
+        const service = await prisma.service.findUnique({
+          where: { id: item.serviceId },
+          select: { id: true, name: true, price: true, duration: true },
+        });
+
+        return {
+          service,
+          count: item._count.serviceId,
+        };
+      })
+    );
+
+    res.json(result);
+  } catch (error) {
+    const handledError = handlePrismaError(error);
+    res.status(handledError.status).json({
+      message: handledError.message,
+      type: handledError.type,
+    });
+  }
+});
+
 
 module.exports = router;

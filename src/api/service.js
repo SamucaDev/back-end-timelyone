@@ -52,7 +52,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update service status (active/inactive)
 router.patch("/:id/status", async (req, res) => {
   try {
     const { active } = req.body;
@@ -66,7 +65,6 @@ router.patch("/:id/status", async (req, res) => {
   }
 });
 
-// Update service details
 router.put("/:id", async (req, res) => {
   try {
     const serviceId = parseInt(req.params.id);
@@ -110,7 +108,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Delete service
 router.delete("/:id", async (req, res) => {
   try {
     const serviceId = parseInt(req.params.id);
@@ -125,7 +122,7 @@ router.delete("/:id", async (req, res) => {
     await prisma.Service.delete({
       where: { id: serviceId },
     });
-    res.status(204).send(); // No content to send back
+    res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: "Error deleting service" });
   }
