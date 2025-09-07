@@ -96,10 +96,9 @@ router.get("/appointments/by-year/:year/:businessId", async (req, res) => {
       }),
       total: m.total,
     }));
-    console.log(result);
+
     res.json(result);
   } catch (error) {
-    console.log(error);
     const handledError = handlePrismaError(error);
     res.status(handledError.status).json({
       message: handledError.message,

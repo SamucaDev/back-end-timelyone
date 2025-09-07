@@ -1,10 +1,10 @@
-const {Router}  = require("express");
-const {PrismaClient} = require("@prisma/client")
+const { Router } = require("express");
+const { PrismaClient } = require("@prisma/client");
 
 const router = Router();
 const prisma = new PrismaClient();
 
-router.get('/:businessId/me', async (req, res) => {
+router.get("/:businessId/me", async (req, res) => {
   try {
     const businessInfo = await prisma.business.findUnique({
       where: {
@@ -12,16 +12,16 @@ router.get('/:businessId/me', async (req, res) => {
       },
     });
     if (!businessInfo) {
-      return res.status(404).json({ message: 'Business not found' });
+      return res.status(404).json({ message: "Business not found" });
     }
     res.json(businessInfo);
   } catch (error) {
-    console.log(error)
-    res.status(500).json({ message: 'Internal server error', error });
+    console.log(error);
+    res.status(500).json({ message: "Internal server error", error });
   }
 });
 
-router.put('/:businessId', async (req, res) => {
+router.put("/:businessId", async (req, res) => {
   const { businessName, businessAddress, businessType } = req.body;
 
   if (!businessName || !businessAddress || businessType === undefined) {
@@ -39,11 +39,10 @@ router.put('/:businessId', async (req, res) => {
     });
 
     res.json(updatedBusiness);
-  }  catch (error) {
-    console.log(error)
-    res.status(500).json({ message: 'Internal server error', error });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal server error", error });
   }
 });
-
 
 module.exports = router;

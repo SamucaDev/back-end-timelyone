@@ -1,4 +1,3 @@
-
 const { Router } = require("express");
 const { PrismaClient } = require("@prisma/client");
 const handlePrismaError = require("../utils/handlePrismaError");
@@ -17,9 +16,9 @@ router.get("/:id", async (req, res) => {
         business: {
           include: {
             Service: true,
-            user: true
-          }
-        }
+            user: true,
+          },
+        },
       },
     });
 
@@ -27,14 +26,14 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ message: "Agenda not found" });
     }
 
-    const openingHours = agenda.days.map(day => {
+    const openingHours = agenda.days.map((day) => {
       const hour = day.hours[0];
       return {
         day: day.weekDay,
-        hours: hour ? `${hour.start} - ${hour.end}` : 'Closed',
+        hours: hour ? `${hour.start} - ${hour.end}` : "Closed",
       };
     });
-    
+
     agenda.openingHours = openingHours;
 
     res.json(agenda);
@@ -52,14 +51,14 @@ router.post("/", async (req, res) => {
     const { name, daysOfTheWeek, userId, businessId } = req.body;
 
     const week = {
-      'sunday': 0,
-      'monday': 1,
-      'tuesday': 2,
-      'wednesday': 3,
-      'thursday': 4,
-      'friday': 5,
-      'saturday': 6,
-    }
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+    };
 
     const agenda = await prisma.agenda.create({
       data: {
@@ -88,7 +87,6 @@ router.post("/", async (req, res) => {
 
     res.json(agenda);
   } catch (error) {
-    console.log(error)
     const handledError = handlePrismaError(error);
     res.status(handledError.status).json({
       message: handledError.message,
@@ -105,7 +103,7 @@ router.get("/user/:userId", async (req, res) => {
         days: {
           include: { hours: true },
         },
-        business: true
+        business: true,
       },
     });
 
@@ -123,13 +121,13 @@ router.delete("/:id", async (req, res) => {
   try {
     await prisma.agenda.delete({
       where: { id: parseInt(req.params.id) },
-      include:{
+      include: {
         days: {
           include: {
-            hours: true
-          }
-        }
-      }
+            hours: true,
+          },
+        },
+      },
     });
     res.json({ message: "Agenda deleted successfully" });
   } catch (error) {
@@ -146,13 +144,13 @@ router.put("/:id", async (req, res) => {
     const { name, daysOfTheWeek } = req.body;
 
     const week = {
-      'sunday': 0,
-      'monday': 1,
-      'tuesday': 2,
-      'wednesday': 3,
-      'thursday': 4,
-      'friday': 5,
-      'saturday': 6,
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
     };
 
     const agendaId = parseInt(req.params.id);
@@ -191,11 +189,5 @@ router.put("/:id", async (req, res) => {
     });
   }
 });
-
-
-
-
-
-
 
 module.exports = router;
