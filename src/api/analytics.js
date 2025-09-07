@@ -68,7 +68,7 @@ router.get("/appointments/by-year/:year/:businessId", async (req, res) => {
     const appointments = await prisma.appointment.findMany({
       where: {
         startTime: {
-          gte: new Date(year, 0, 1, 0, 0, 0), 
+          gte: new Date(year, 0, 1, 0, 0, 0),
           lte: new Date(year, 11, 31, 23, 59, 59),
         },
         agendaId: { in: agendaIds },
@@ -96,10 +96,10 @@ router.get("/appointments/by-year/:year/:businessId", async (req, res) => {
       }),
       total: m.total,
     }));
-    console.log(result)
+    console.log(result);
     res.json(result);
   } catch (error) {
-    console.log(error)
+    console.log(error);
     const handledError = handlePrismaError(error);
     res.status(handledError.status).json({
       message: handledError.message,
@@ -311,6 +311,7 @@ router.get("/engagement/:businessId", async (req, res) => {
         client: true,
         service: { select: { id: true, name: true } },
       },
+      orderBy: { startTime: "desc" },
     });
 
     const engagementMap = {};
@@ -323,13 +324,22 @@ router.get("/engagement/:businessId", async (req, res) => {
           id: clientId,
           name: appt.client.name,
           email: appt.client.email,
-          email: appt.client.phone,
+          phone: appt.client.phone,
           totalAppointments: 0,
           services: {},
+          lastVisit: null,
         };
       }
 
       engagementMap[clientId].totalAppointments += 1;
+
+      if (!engagementMap[clientId]?.lastVisit) {
+        const date = new Date(appt.startTime);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        engagementMap[clientId].lastVisit = `${day}/${month}/${year}`;
+      }
 
       const serviceName = appt.service?.name || "Unknown";
       if (!engagementMap[clientId].services[serviceName]) {
@@ -383,56 +393,58 @@ router.get("/engagement/user/:userId/:businessId", async (req, res) => {
   }
 });
 
-router.get("/appointments/services-by-year/:year/:businessId", async (req, res) => {
-  try {
-    const year = parseInt(req.params.year);
-    const businessId = parseInt(req.params.businessId);
+router.get(
+  "/appointments/services-by-year/:year/:businessId",
+  async (req, res) => {
+    try {
+      const year = parseInt(req.params.year);
+      const businessId = parseInt(req.params.businessId);
 
-    const agendas = await prisma.agenda.findMany({
-      where: { businessId },
-      select: { id: true },
-    });
+      const agendas = await prisma.agenda.findMany({
+        where: { businessId },
+        select: { id: true },
+      });
 
-    const agendaIds = agendas.map((a) => a.id);
+      const agendaIds = agendas.map((a) => a.id);
 
-    const servicesCount = await prisma.appointment.groupBy({
-      by: ["serviceId"],
-      where: {
-        startTime: {
-          gte: new Date(year, 0, 1, 0, 0, 0),
-          lte: new Date(year, 11, 31, 23, 59, 59),
+      const servicesCount = await prisma.appointment.groupBy({
+        by: ["serviceId"],
+        where: {
+          startTime: {
+            gte: new Date(year, 0, 1, 0, 0, 0),
+            lte: new Date(year, 11, 31, 23, 59, 59),
+          },
+          agendaId: { in: agendaIds },
+          status: 1,
         },
-        agendaId: { in: agendaIds },
-        status: 1,
-      },
-      _count: {
-        serviceId: true,
-      },
-    });
+        _count: {
+          serviceId: true,
+        },
+      });
 
-    const result = await Promise.all(
-      servicesCount.map(async (item) => {
-        const service = await prisma.service.findUnique({
-          where: { id: item.serviceId },
-          select: { id: true, name: true, price: true, duration: true },
-        });
+      const result = await Promise.all(
+        servicesCount.map(async (item) => {
+          const service = await prisma.service.findUnique({
+            where: { id: item.serviceId },
+            select: { id: true, name: true, price: true, duration: true },
+          });
 
-        return {
-          service,
-          count: item._count.serviceId,
-        };
-      })
-    );
+          return {
+            service,
+            count: item._count.serviceId,
+          };
+        })
+      );
 
-    res.json(result);
-  } catch (error) {
-    const handledError = handlePrismaError(error);
-    res.status(handledError.status).json({
-      message: handledError.message,
-      type: handledError.type,
-    });
+      res.json(result);
+    } catch (error) {
+      const handledError = handlePrismaError(error);
+      res.status(handledError.status).json({
+        message: handledError.message,
+        type: handledError.type,
+      });
+    }
   }
-});
-
+);
 
 module.exports = router;

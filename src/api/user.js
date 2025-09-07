@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 const argon2 = require("argon2");
 const handlePrismaError = require("../utils/handlePrismaError");
-const { default: BusinessType } = require("../utils/enum/businessType");
+const BusinessType  = require("../utils/enum/businessType");
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -46,6 +46,10 @@ router.post("/", async (req, res) => {
       },
     });
 
+    console.log(userInformation.businessType)
+    console.log(BusinessType[userInformation.businessType])
+    console.log(BusinessType)
+
     if (userInformation.userType == typeUsersEnum.OWNER) {
       await prisma.business.create({
         data: {
@@ -59,6 +63,7 @@ router.post("/", async (req, res) => {
 
     res.json({});
   } catch (error) {
+    console.log(error)
     const handledError = handlePrismaError(error);
 
     res.status(handledError.status).json({
@@ -85,6 +90,8 @@ router.post("/login", async (req, res) => {
       res.status(400).json({
         message: "Login or Password incorrect!",
       });
+
+      return
     }
 
     const token = jwt.sign(

@@ -1,8 +1,8 @@
-const BusinessType = Object.freeze({
+const BusinessType = {
   'hair_salon': 0,
   'car_wash': 2,
   'barber_shop': 1,
   'others': 3,
-});
+};
 
-export default BusinessType;
+module.exports = BusinessType;
